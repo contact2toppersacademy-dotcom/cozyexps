@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, Variants } from 'motion/react';
 import { Calendar, ReceiptText } from 'lucide-react';
 import {
   Category,
@@ -22,6 +22,35 @@ interface TransactionsCardProps {
   onDateChange: (date: string) => void;
   onSelectTransaction: (tx: Transaction) => void;
 }
+
+const listVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.035,
+    },
+  },
+};
+
+const rowVariants: Variants = {
+  hidden: { opacity: 0, y: 10, scale: 0.985 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.24,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+  exit: {
+    opacity: 0,
+    x: -14,
+    scale: 0.98,
+    transition: { duration: 0.16 },
+  },
+};
 
 export const TransactionsCard: React.FC<TransactionsCardProps> = ({
   transactions,
@@ -56,6 +85,9 @@ export const TransactionsCard: React.FC<TransactionsCardProps> = ({
       input.click();
     }
   };
+
+  // Key list container by filter & selectedDate so filter switches smoothly re-animate visible rows
+  const listKey = `${filter}-${selectedDate}-${currency}`;
 
   return (
     <motion.section
@@ -137,11 +169,12 @@ export const TransactionsCard: React.FC<TransactionsCardProps> = ({
       </div>
 
       {/* Scrollable Transactions List */}
-      <div className="max-h-[380px] lg:max-h-[470px] overflow-y-auto cozy-scroll space-y-2 pr-0.5">
+      <div className="max-h-[380px] lg:max-h-[470px] overflow-y-auto cozy-scroll pr-0.5">
         {transactions.length === 0 ? (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22 }}
             className="py-10 px-4 text-center text-sm text-slate-500 dark:text-slate-400"
           >
             <div className="text-3xl mb-2">🍃</div>
@@ -151,68 +184,72 @@ export const TransactionsCard: React.FC<TransactionsCardProps> = ({
             </p>
           </motion.div>
         ) : (
-          <AnimatePresence initial={false}>
-            {transactions.map((tx, idx) => {
-              const cat = categoryMap.get(tx.categoryId);
-              const wal = walletMap.get(tx.walletId);
-              const isIncome = tx.type === 'income';
-              const catIcon = cat?.icon || (isIncome ? '💚' : '💸');
-              const catName = cat?.name || 'General';
-              const walName = wal?.name || 'Cash';
+          <motion.div
+            key={listKey}
+            variants={listVariants}
+            initial="hidden"
+            animate="show"
+            className="space-y-2"
+          >
+            <AnimatePresence mode="popLayout">
+              {transactions.map((tx) => {
+                const cat = categoryMap.get(tx.categoryId);
+                const wal = walletMap.get(tx.walletId);
+                const isIncome = tx.type === 'income';
+                const catIcon = cat?.icon || (isIncome ? '💚' : '💸');
+                const catName = cat?.name || 'General';
+                const walName = wal?.name || 'Cash';
 
-              return (
-                <motion.button
-                  key={tx.id}
-                  type="button"
-                  layout
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -12 }}
-                  transition={{
-                    duration: 0.2,
-                    delay: Math.min(idx * 0.02, 0.16),
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
-                  whileHover={{ y: -1, x: 2 }}
-                  whileTap={{ scale: 0.985 }}
-                  onClick={() => onSelectTransaction(tx)}
-                  className="group w-full text-left rounded-[16px] bg-slate-50/90 dark:bg-[#18233d]/85 hover:bg-slate-100 dark:hover:bg-[#1f2d4d] px-3 py-2.5 flex items-center gap-3 transition-colors shadow-2xs hover:shadow-xs"
-                >
-                  <div className="w-10 h-10 rounded-[13px] bg-white dark:bg-[#131c31] shadow-xs flex items-center justify-center text-lg shrink-0 transition-transform duration-200 group-hover:scale-108">
-                    {catIcon}
-                  </div>
+                return (
+                  <motion.button
+                    key={`${tx.id}-${tx.updatedAt}`}
+                    type="button"
+                    layout
+                    variants={rowVariants}
+                    initial="hidden"
+                    animate="show"
+                    exit="exit"
+                    whileHover={{ y: -1, x: 2 }}
+                    whileTap={{ scale: 0.985 }}
+                    onClick={() => onSelectTransaction(tx)}
+                    className="group w-full text-left rounded-[16px] bg-slate-50/90 dark:bg-[#18233d]/85 hover:bg-slate-100 dark:hover:bg-[#1f2d4d] px-3 py-2.5 flex items-center gap-3 transition-colors shadow-2xs hover:shadow-xs"
+                  >
+                    <div className="w-10 h-10 rounded-[13px] bg-white dark:bg-[#131c31] shadow-xs flex items-center justify-center text-lg shrink-0 transition-transform duration-200 group-hover:scale-108">
+                      {catIcon}
+                    </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 truncate flex items-center gap-1.5">
-                      <span className="truncate">{tx.title}</span>
-                      <ReceiptText className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13.5px] font-bold text-slate-900 dark:text-slate-100 truncate flex items-center gap-1.5">
+                        <span className="truncate">{tx.title}</span>
+                        <ReceiptText className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </div>
+                      <div className="text-[11.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        <span>{catName}</span>
+                        <span className="mx-1.5" aria-hidden="true">·</span>
+                        <span>{formatDateShort(tx.date)}</span>
+                      </div>
                     </div>
-                    <div className="text-[11.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                      <span>{catName}</span>
-                      <span className="mx-1.5" aria-hidden="true">·</span>
-                      <span>{formatDateShort(tx.date)}</span>
-                    </div>
-                  </div>
 
-                  <div className="text-right shrink-0">
-                    <div
-                      className={`text-[13.5px] font-extrabold font-mono-num ${
-                        isIncome
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400'
-                      }`}
-                    >
-                      {isIncome ? '+' : '-'}
-                      {formatMoney(tx.amount, currency, rates)}
+                    <div className="text-right shrink-0">
+                      <div
+                        className={`text-[13.5px] font-extrabold font-mono-num ${
+                          isIncome
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {isIncome ? '+' : '-'}
+                        {formatMoney(tx.amount, currency, rates)}
+                      </div>
+                      <div className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                        {walName}
+                      </div>
                     </div>
-                    <div className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-                      {walName}
-                    </div>
-                  </div>
-                </motion.button>
-              );
-            })}
-          </AnimatePresence>
+                  </motion.button>
+                );
+              })}
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
     </motion.section>
