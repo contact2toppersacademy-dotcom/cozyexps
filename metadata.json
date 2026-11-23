@@ -1,0 +1,6 @@
+{
+  "name": "CozyLedger",
+  "description": "A cozy, mobile-first Income & Expense Tracker powered by Google Drive appDataFolder with offline support, wallets, loans, and budgets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
